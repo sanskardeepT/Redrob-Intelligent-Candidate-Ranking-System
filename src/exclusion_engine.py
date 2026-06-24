@@ -7,22 +7,10 @@ import re
 from typing import Dict, Any, Tuple, List
 
 # Rule 1 Constants
-PRODUCTION_KEYWORDS = {"user", "users", "scale", "production", "shipped", "deployed"}
-
-# Rule 3 Constants
-CV_SPEECH_ROBOTICS_KEYWORDS = {
-    "computer vision", "cv", "object detection", "image segmentation", "yolo",
-    "speech recognition", "speech-to-text", "text-to-speech", "asr", "tts",
-    "robotics", "slam", "lidar", "autonomous vehicle", "autonomous vehicles",
-    "image classification", "segmentation", "ros"
-}
-
-NLP_IR_RETRIEVAL_KEYWORDS = {
-    "nlp", "natural language processing", "information retrieval", "retrieval",
-    "search engine", "vector database", "vector search", "llm", "large language model",
-    "embeddings", "milvus", "qdrant", "pinecone", "chroma", "faiss", "elasticsearch",
-    "solr", "lucene", "bert", "transformer", "hybrid search", "ndcg", "mrr", "map",
-    "recommender", "recommendation"
+PRODUCTION_KEYWORDS = {
+    "user", "users", "scale", "production", "shipped", "deployed", "pipeline", 
+    "inference", "dataset", "model", "api", "service", "system", "dashboard", 
+    "fine-tuned", "trained", "serving", "real-time", "end-to-end"
 }
 
 # Rule 6 Constants
@@ -38,14 +26,7 @@ HANDS_ON_KEYWORDS = {
 def excl_research_only(candidate: Dict[str, Any]) -> Tuple[bool, str]:
     """
     Excludes candidates whose career history shows no evidence of production deployment.
-    Requires at least one mention of production keywords (users, scale, production, shipped, deployed).
-    
-    Why these keywords?
-    - 'users': Indicates the candidate builds software that actual people interact with.
-    - 'scale': Demonstrates experience handling large volume or high traffic.
-    - 'production': Directly indicates deployment in live environments.
-    - 'shipped': Represents completing and delivering software features/products.
-    - 'deployed': Reflects the operationalization of models or software systems.
+    Requires at least one mention of production keywords.
     """
     career_history = candidate.get("career_history", [])
     if not career_history:
@@ -61,7 +42,7 @@ def excl_research_only(candidate: Dict[str, Any]) -> Tuple[bool, str]:
     has_production_evidence = any(word in combined_text_lower for word in PRODUCTION_KEYWORDS)
     
     if not has_production_evidence:
-        return True, "Research only: Career history contains no evidence of production deployment (users, scale, production, shipped, deployed)."
+        return True, "Research only: Career history contains no evidence of production deployment."
     
     return False, ""
 
@@ -93,42 +74,40 @@ def excl_consulting_only(candidate: Dict[str, Any]) -> Tuple[bool, str]:
     return False, ""
 
 
-# Compiled Regexes for fast matching
-CV_SPEECH_ROBOTICS_REGEX = re.compile(
-    r'\b(' + '|'.join(map(re.escape, CV_SPEECH_ROBOTICS_KEYWORDS)) + r')\b',
-    re.IGNORECASE
-)
-NLP_IR_RETRIEVAL_REGEX = re.compile(
-    r'\b(' + '|'.join(map(re.escape, NLP_IR_RETRIEVAL_KEYWORDS)) + r')\b',
-    re.IGNORECASE
-)
-
-
 def excl_cv_speech_robotics_only(candidate: Dict[str, Any]) -> Tuple[bool, str]:
     """
-    Excludes candidates whose experience is dominated by Computer Vision, Speech, or Robotics 
-    with zero NLP, Information Retrieval, or Vector Search experience.
-    
-    Rule:
-    - Counts of CV/Speech/Robotics keywords in current_industry and career description is > 0.
-    - NLP/IR/Retrieval keyword count is exactly 0.
+    Excludes candidates whose experience is dominated by CV/Speech/Robotics with no NLP/IR skills.
+    Checks the structured skills array:
+    - Excluded if candidate has CV-specific named skills.
+    - AND no NLP/IR-specific named skill with duration_months > 0.
     """
-    profile = candidate.get("profile", {})
-    current_industry = profile.get("current_industry", "").lower()
-    
-    career_history = candidate.get("career_history", [])
-    combined_text = current_industry
-    for role in career_history:
-        combined_text += f" {role.get('description', '')}"
-    
-    combined_text_lower = combined_text.lower()
+    skills = candidate.get("skills", [])
+    if not skills:
+        return False, ""
 
-    # Search for occurrences using precompiled regexes
-    cv_count = len(CV_SPEECH_ROBOTICS_REGEX.findall(combined_text_lower))
-    nlp_count = len(NLP_IR_RETRIEVAL_REGEX.findall(combined_text_lower))
-
-    if cv_count > 0 and nlp_count == 0:
-        return True, f"CV/Speech/Robotics only: Profile contains CV/Speech/Robotics terms ({cv_count}) but 0 NLP/IR/Retrieval terms."
+    cv_keywords = ["computer vision", "opencv", "yolo", "image segmentation"]
+    nlp_keywords = [
+        "nlp", "bert", "transformer", "embeddings", "retrieval", "vector database", 
+        "elasticsearch", "faiss", "pinecone"
+    ]
+    
+    has_cv_skill = False
+    has_nlp_skill = False
+    
+    for skill in skills:
+        name_lower = skill.get("name", "").lower()
+        duration = skill.get("duration_months", 0)
+        
+        # Check CV skills (substring match)
+        if any(kw in name_lower for kw in cv_keywords):
+            has_cv_skill = True
+            
+        # Check NLP skills with duration_months > 0 (substring match)
+        if any(kw in name_lower for kw in nlp_keywords) and duration > 0:
+            has_nlp_skill = True
+            
+    if has_cv_skill and not has_nlp_skill:
+        return True, "CV/Speech/Robotics only: Candidate has CV-specific skills but no NLP/IR-specific skills with duration > 0."
         
     return False, ""
 

@@ -29,6 +29,18 @@ def test_excl_research_only():
     excluded, reason = excl_research_only(cand_clean)
     assert not excluded
 
+    # Case 3: Not excluded (real ML candidate with pipeline, fine-tuned, dataset, inference, service)
+    cand_real_ml = {
+        "career_history": [
+            {
+                "industry": "AI",
+                "description": "fine-tuned ResNet variants on a labeled dataset of ~200K images... training pipeline and inference service"
+            }
+        ]
+    }
+    excluded, reason = excl_research_only(cand_real_ml)
+    assert not excluded
+
 
 def test_excl_consulting_only():
     # Case 1: Excluded (only worked at TCS and Infosys)
@@ -54,25 +66,45 @@ def test_excl_consulting_only():
 
 
 def test_excl_cv_speech_robotics_only():
-    # Case 1: Excluded (has CV terms, no NLP terms)
+    # Case 1: Excluded (CV-specific named skills, no NLP/IR skills)
     cand_excluded = {
-        "profile": {"current_industry": "Computer Vision"},
-        "career_history": [
-            {"description": "Developed object detection model using YOLO and image segmentation."}
+        "skills": [
+            {"name": "OpenCV", "proficiency": "expert", "duration_months": 24},
+            {"name": "C++", "proficiency": "intermediate", "duration_months": 12}
         ]
     }
     excluded, reason = excl_cv_speech_robotics_only(cand_excluded)
     assert excluded
     assert "CV/Speech/Robotics only" in reason
 
-    # Case 2: Not excluded (has CV terms but also LLMs/retrieval)
+    # Case 2: Not excluded (CV skill AND NLP skill with duration > 0)
     cand_clean = {
-        "profile": {"current_industry": "Computer Vision"},
-        "career_history": [
-            {"description": "Developed object detection and hybrid search for vector database."}
+        "skills": [
+            {"name": "OpenCV", "proficiency": "expert", "duration_months": 24},
+            {"name": "BERT NLP", "proficiency": "advanced", "duration_months": 12}
         ]
     }
     excluded, reason = excl_cv_speech_robotics_only(cand_clean)
+    assert not excluded
+
+    # Case 3: Excluded (CV skill AND NLP skill but duration is 0)
+    cand_cv_nlp_zero_dur = {
+        "skills": [
+            {"name": "YOLO", "proficiency": "intermediate", "duration_months": 12},
+            {"name": "Pinecone Vector DB", "proficiency": "beginner", "duration_months": 0}
+        ]
+    }
+    excluded, reason = excl_cv_speech_robotics_only(cand_cv_nlp_zero_dur)
+    assert excluded
+    assert "CV/Speech/Robotics only" in reason
+
+    # Case 4: Not excluded (no CV skills at all)
+    cand_no_cv = {
+        "skills": [
+            {"name": "Python", "proficiency": "expert", "duration_months": 48}
+        ]
+    }
+    excluded, reason = excl_cv_speech_robotics_only(cand_no_cv)
     assert not excluded
 
 
