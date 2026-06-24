@@ -1,0 +1,6 @@
+# Submission Metadata
+team_name: "Redrob Ranker Team"
+ai_tools_used: "Antigravity IDE, Gemini (Flash 3.5), Claude 3.5 Sonnet (for design/review)"
+methodology_summary: "A two-stage candidate ranking system incorporating: (1) deterministic honeypot detection rules (experience-sum mismatches and zero-duration expert skills), (2) a multi-rule hard exclusion engine targeting JD-derived disqualifiers (such as location/visa, consulting/research-only focus, CV/speech-only profiles, and stale architecture experience), (3) a multi-component decomposable scoring formula combining local sentence embeddings (all-MiniLM-L6-v2) for overall job description match, specific critical skill density, key narrative phrases, and a soft Gaussian experience-band fit, (4) multiplicative multipliers for candidate activity and location/notice-period fit, and (5) deterministic rotating template-based explanation generation preventing hallucinations."
+honeypot_check_done: true
+honeypot_methodology: "Flag experience-sum mismatches where the calculated career history duration differs from declared years by > 3 years, and zero-duration expert skills (expert proficiency with 0 duration_months). Considered and rejected fictional company name lists as placeholders because they represent generic anonymized employer tags used on thousands of legitimate candidates."
